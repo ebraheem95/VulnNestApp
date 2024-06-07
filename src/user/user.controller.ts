@@ -17,6 +17,7 @@ import { User } from "./user.decorator";
 import { ValidationPipe } from "../shared/pipes/validation.pipe";
 
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { UserEntity } from "./user.entity";
 
 @ApiBearerAuth()
 @ApiTags("user")
@@ -56,7 +57,6 @@ export class UserController {
 
     const errors = { User: " not found" };
     if (!_user) throw new HttpException({ errors }, 401);
-
     const token = await this.userService.generateJWT(_user);
     const { email, username, bio, image, password } = _user;
     const user = { email, token, username, bio, image, password };

@@ -31,23 +31,38 @@ export class UserService {
     if (await argon2.verify(user.password, password)) {
       return user;
     }
-
-    return null;
+    throw new HttpException(
+      { message: "incorrect password" },
+      HttpStatus.BAD_REQUEST
+    );
   }
 
   async create(dto: CreateUserDto): Promise<UserRO> {
-    // TODO: add mass assignment vulnerability
-    // check uniqueness of username/email
+    // check uniqueness of username
     const { username, email, password } = dto;
+    const qbUsername = await getRepository(UserEntity)
+      .createQueryBuilder("user")
+      .where("user.username = :username", { username });
+
+    const userNameCheck = await qbUsername.getOne();
+
+    if (userNameCheck) {
+      const errors = { username: "Username must be unique." };
+      throw new HttpException(
+        { message: "Input data validation failed", errors },
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    // check uniqueness of email
     const qb = await getRepository(UserEntity)
       .createQueryBuilder("user")
-      .where("user.username = :username", { username })
-      .orWhere("user.email = :email", { email });
+      .where("user.email = :email", { email });
 
     const user = await qb.getOne();
 
     if (user) {
-      const errors = { username: "Username and email must be unique." };
+      const errors = { username: "Email must be unique." };
       throw new HttpException(
         { message: "Input data validation failed", errors },
         HttpStatus.BAD_REQUEST
@@ -56,15 +71,6 @@ export class UserService {
 
     // create new user
     let newUser = new UserEntity();
-    // newUser = dto;
-    // console.log(newUser);
-    // console.log(dto);
-    // console.log("no issues");
-    // const errors = { username: "Username and email must be unique." };
-    // throw new HttpException(
-    //   { message: "Input data validation failed", errors },
-    //   HttpStatus.BAD_REQUEST
-    // );
     newUser.username = username;
     newUser.email = email;
     newUser.password = password;
@@ -87,11 +93,6 @@ export class UserService {
     let toUpdate = await this.userRepository.findOne(id);
     console.log("update");
     console.log(dto);
-    // delete toUpdate.password;
-    // delete toUpdate.favorites;
-
-    // let updated = Object.assign(toUpdate, dto);
-    // return await this.userRepository.save(updated);
     this.userRepository.merge(toUpdate, dto);
     return await this.userRepository.save(toUpdate);
   }
